@@ -8,11 +8,11 @@ export default {
     extend: {
       colors: {
         cnWhite: "#feffff",
-        cnLightGreen: "#2b945f",
         cnDarkGreen: "#0c3740",
+       cnLightGreen: "#2b945f",
         cnBlack: "#000000",
         cnGrey: "#5a5a5a",
-      },
+      },  
     },
   },
   plugins: [],

@@ -4,7 +4,46 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>codenest-management-system</title>
+    <title>Code Nest Management System</title>
+
+    <!-- 1. TAILWIND ENGINE -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 2. BRAND CONFIGURATION (CODE NEST COLORS) -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cnWhite: "#feffff",
+              cnLightGreen: "#2b945f",
+              cnDarkGreen: "#0c3740",
+              cnBlack: "#1a1a1a",
+              cnGrey: "#64748b",
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- 3. CUSTOM ANIMATIONS FOR PREMIUM LOOK -->
+    <style type="text/tailwindcss">
+      @layer base {
+        body {
+          @apply bg-[#F8FAFC] text-cnBlack;
+        }
+      }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-in {
+        animation: slideIn 0.5s ease-out forwards;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
