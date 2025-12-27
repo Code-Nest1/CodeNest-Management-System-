@@ -1,149 +1,185 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Mail, Lock, Building2, ShieldAlert, UserPlus, KeyRound } from 'lucide-react';
+import { Mail, Lock, Building2, ShieldAlert, UserPlus, KeyRound, User, Loader2 } from 'lucide-react';
 
 export default function Login() {
-  const [isSignup, setIsSignup] = useState(false); // Mode Toggle
-  const [identifier, setIdentifier] = useState(''); // ID or Gmail
+  const [isSignup, setIsSignup] = useState(false); 
+  const [identifier, setIdentifier] = useState(''); 
+  const [fullName, setFullName] = useState(''); 
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // AUTH HANDSHAKE PROTOCOL
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // ID LOGIC: Convert codenest_user to codenest_user@codenest.com if no @ is present
-    const formattedEmail = identifier.includes('@') 
-      ? identifier 
-      : `${identifier}@codenest.com`;
+    // SECURITY NORMALIZATION: Removes spaces and forces lowercase for case-insensitivity
+    const cleanId = identifier.trim().toLowerCase();
+    const formattedEmail = cleanId.includes('@') 
+      ? cleanId 
+      : `${cleanId}@codenest.com`;
 
-    if (isSignup) {
-      // --- SIGNUP LOGIC ---
-      const { data, error } = await supabase.auth.signUp({
-        email: formattedEmail,
-        password: password,
-      });
+    try {
+      if (isSignup) {
+        // --- 1. SIGNUP PHASE ---
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formattedEmail,
+          password: password,
+        });
 
-      if (error) {
-        alert("Registration Failed: " + error.message);
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // --- 2. REGISTRY PHASE: Insert pending profile (Sir Rabnawaz's alert) ---
+          const { error: profileError } = await supabase.from('profiles').insert([
+            { 
+              id: authData.user.id, 
+              full_name: fullName.toUpperCase().trim(), 
+              role: 'employee', 
+              is_approved: false 
+            }
+          ]);
+
+          if (profileError) throw profileError;
+
+          alert("TRANSMISSION SUCCESS: Personnel node logged. Wait for Sir Rabnawaz to authorize access via HQ Dashboard.");
+          setIsSignup(false);
+          setFullName('');
+          setIdentifier('');
+        }
       } else {
-        alert("SUCCESS: Request sent to Code Nest Database. Wait for Sir Rabnawaz to authorize your account.");
-        setIsSignup(false); // Send back to login
-      }
-    } else {
-      // --- LOGIN LOGIC ---
-      const { data, error } = await supabase.auth.signInWithPassword({ 
-        email: formattedEmail, 
-        password: password 
-      });
+        // --- 3. LOGIN PHASE ---
+        const { data, error: loginError } = await supabase.auth.signInWithPassword({ 
+          email: formattedEmail, 
+          password: password 
+        });
 
-      if (error) {
-        alert("Authentication Failed: " + error.message);
+        if (loginError) {
+          if (loginError.message.includes("Email not confirmed")) {
+             throw new Error("GATE BLOCKED: Confirm Email is ON in Supabase Auth Settings. Disable it to allow entry.");
+          }
+          const message = loginError.message === "Invalid login credentials" 
+            ? "IDENTIFIER OR CIPHER MISMATCH. RE-CHECK NODE ID." 
+            : loginError.message.toUpperCase();
+          throw new Error(message);
+        }
       }
+    } catch (error) {
+      alert("TERMINAL ERROR: " + error.message);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-cnDarkGreen flex flex-col items-center justify-center p-4 font-sans selection:bg-cnLightGreen selection:text-white">
+    /* OUTER WRAPPER: Forced absolute position to kill white blank space at bottom */
+    <div className="fixed inset-0 h-screen w-screen bg-[#0c3740] flex flex-col items-center justify-center font-sans selection:bg-[#2b945f] selection:text-white overflow-hidden select-none m-0 p-0 border-none">
       
-      <div className="bg-cnWhite w-full max-w-[340px] rounded-[35px] shadow-[0_30px_70px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-500 border border-white/10 animate-in">
+      {/* 80% SCALE BOX */}
+      <div className="w-full max-w-[340px] animate-in slide-in-from-bottom-5 duration-700 p-4" style={{ zoom: '0.8' }}>
         
-        {/* DYNAMIC HEADER */}
-        <div className={`p-8 text-center text-cnWhite relative overflow-hidden group transition-colors duration-500 ${isSignup ? 'bg-cnDarkGreen' : 'bg-cnLightGreen'}`}>
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
-            {isSignup ? <UserPlus size={80} /> : <ShieldAlert size={80} />}
-          </div>
-          
-          <div className="flex justify-center mb-3 relative z-10">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/10">
-               {isSignup ? <KeyRound size={24} /> : <Building2 size={24} />}
+        <div className="bg-white rounded-[35px] shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 relative z-10">
+            
+            {/* ENCRYPTED HEADER */}
+            <div className={`p-9 text-center text-white relative overflow-hidden transition-all duration-700 ${isSignup ? 'bg-[#0c3740]' : 'bg-[#2b945f]'}`}>
+                <div className="absolute -top-6 -right-6 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                    {isSignup ? <UserPlus size={120} /> : <ShieldAlert size={120} />}
+                </div>
+                
+                <div className="flex justify-center mb-4 relative z-10 font-black">
+                    <div className="bg-white/10 p-2.5 rounded-[18px] backdrop-blur-md border border-white/20">
+                       {isSignup ? <KeyRound size={26} /> : <Building2 size={26} />}
+                    </div>
+                </div>
+                
+                <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none relative z-10 font-black italic uppercase">
+                    {isSignup ? "Register" : "Code Nest"}
+                </h1>
+                <p className="text-[10px] font-black opacity-80 mt-2 uppercase tracking-[0.4em] relative z-10 italic">
+                    {isSignup ? "Personnel Entry" : "System Login 1.0.4"}
+                </p>
             </div>
-          </div>
-          <h1 className="text-xl font-black italic uppercase tracking-tighter uppercase leading-none z-10">
-            {isSignup ? "Sign Up" : "Code Nest"}
-          </h1>
-          <p className="text-[9px] font-black opacity-80 mt-2 uppercase tracking-[0.3em] z-10">
-            {isSignup ? "Create Personnel Node" : "Access Terminal v1"}
-          </p>
+
+            {/* INTERFACE INPUTS */}
+            <div className="p-9 bg-white">
+                <form onSubmit={handleAuth} className="space-y-4">
+                    
+                    {/* FULL NAME - (VISIBLE ONLY IN SIGNUP MODE) */}
+                    {isSignup && (
+                        <div className="animate-in slide-in-from-top-2 duration-300">
+                            <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest italic opacity-60">Full Name String</label>
+                            <div className="relative group">
+                                <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0c3740] transition-colors" />
+                                <input 
+                                    type="text" 
+                                    required 
+                                    placeholder="NODE NAME"
+                                    className="w-full bg-slate-50 border border-slate-100 pl-11 p-4 rounded-2xl text-[11px] font-black italic text-[#0c3740] outline-none focus:bg-white focus:border-[#0c3740] transition-all uppercase placeholder:opacity-20 shadow-inner" 
+                                    onChange={(e) => setFullName(e.target.value)} 
+                                    value={fullName}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest italic opacity-60">Authentication Identifier</label>
+                        <div className="relative group">
+                            <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2b945f] transition-colors" />
+                            <input 
+                                type="text" 
+                                required 
+                                placeholder={isSignup ? "username" : "codenest_id"}
+                                className="w-full bg-slate-50 border border-slate-100 pl-11 p-4 rounded-2xl text-[11px] font-black italic text-[#0c3740] outline-none focus:bg-white focus:border-[#2b945f] transition-all uppercase placeholder:opacity-20 shadow-inner" 
+                                onChange={(e) => setIdentifier(e.target.value)} 
+                                value={identifier}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest italic opacity-60">Security Cipher</label>
+                        <div className="relative group">
+                            <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2b945f] transition-colors" />
+                            <input 
+                                type="password" 
+                                required 
+                                placeholder="••••••••"
+                                className="w-full bg-slate-50 border border-slate-100 pl-11 p-4 rounded-2xl text-[11px] font-black italic text-[#0c3740] outline-none focus:bg-white focus:border-[#2b945f] transition-all shadow-inner tracking-[0.2em]" 
+                                onChange={(e) => setPassword(e.target.value)} 
+                                value={password}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="pt-6">
+                        <button 
+                            disabled={loading} 
+                            className={`w-full text-white font-black py-5 rounded-[22px] shadow-xl transition-all text-[11px] uppercase tracking-[0.25em] active:scale-95 border-t border-white/5 italic flex items-center justify-center gap-3
+                            ${isSignup ? 'bg-[#0c3740] hover:bg-black shadow-[#0c3740]/20' : 'bg-[#2b945f] hover:bg-[#0c3740] shadow-[#2b945f]/20'}`}
+                        >
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : (isSignup ? "Submit Node Request" : "Establish Link")}
+                        </button>
+                    </div>
+                </form>
+
+                <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+                    <button 
+                        onClick={() => { setIsSignup(!isSignup); setIdentifier(''); setPassword(''); }}
+                        className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-[#2b945f] transition-colors italic underline underline-offset-[6px] decoration-slate-100 hover:decoration-[#2b945f] font-black italic"
+                    >
+                        {isSignup ? "Already Enrolled? Initiate Login" : "No Registry? Establish Personnel Node"}
+                    </button>
+                </div>
+            </div>
         </div>
 
-        {/* AUTH FORM */}
-        <div className="p-8">
-          <form onSubmit={handleAuth} className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-black text-cnGrey mb-1.5 uppercase tracking-widest italic opacity-60">
-                {isSignup ? "Enter Identity (Gmail or ID)" : "Personnel ID / Email"}
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-300 group-focus-within:text-cnLightGreen transition-colors">
-                  <Mail size={14} />
-                </div>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder={isSignup ? "user@gmail.com" : "codenest_user"}
-                  className="w-full bg-slate-50 border border-slate-100 pl-11 p-3.5 rounded-2xl text-[11px] font-black italic text-cnDarkGreen outline-none focus:bg-white focus:border-cnLightGreen transition-all shadow-inner uppercase tracking-tighter" 
-                  onChange={(e) => setIdentifier(e.target.value)} 
-                  value={identifier}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-cnGrey mb-1.5 uppercase tracking-widest italic opacity-60">
-                {isSignup ? "Create Security Key" : "Security Key"}
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-300 group-focus-within:text-cnLightGreen transition-colors">
-                  <Lock size={14} />
-                </div>
-                <input 
-                  type="password" 
-                  required 
-                  placeholder="••••••••"
-                  className="w-full bg-slate-50 border border-slate-100 pl-11 p-3.5 rounded-2xl text-[11px] font-black italic text-cnDarkGreen outline-none focus:bg-white focus:border-cnLightGreen transition-all shadow-inner tracking-widest" 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  value={password}
-                />
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button 
-                disabled={loading} 
-                className={`w-full text-cnWhite font-black py-4 rounded-2xl shadow-xl transition-all text-[11px] uppercase tracking-[0.2em] italic active:scale-95 border-t border-white/5 
-                ${isSignup ? 'bg-cnDarkGreen shadow-cnDarkGreen/20 hover:bg-cnBlack' : 'bg-cnLightGreen shadow-cnLightGreen/20 hover:bg-cnDarkGreen'}`}
-              >
-                {loading ? (
-                   <div className="flex items-center justify-center gap-2 font-mono uppercase text-[9px] tracking-widest">
-                      <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
-                      Processing...
-                   </div>
-                ) : (
-                  isSignup ? "Submit Join Request" : "Initiate Access"
-                )}
-              </button>
-            </div>
-          </form>
-
-          {/* DYNAMIC MODE SWITCHER */}
-          <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-            <button 
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-cnLightGreen transition-colors italic underline underline-offset-4 decoration-slate-100 hover:decoration-cnLightGreen"
-            >
-              {isSignup ? "Existing Node? Terminate Registration & Login" : "Awaiting Node Registration? Request Access"}
-            </button>
-          </div>
+        {/* PERSISTENT BRANDING (Prevents Blank Bottom) */}
+        <div className="mt-8 text-center space-y-1">
+           <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] italic leading-none font-black italic uppercase italic">Code Nest ERP Alpha</p>
+           <p className="text-[8px] font-bold text-white/10 uppercase tracking-[0.3em] italic">Encryption standard tier-4 Active</p>
         </div>
-      </div>
-      
-      {/* BRAND SLOGAN */}
-      <div className="mt-6 text-center space-y-1">
-         <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] italic leading-none">Code Nest Operations System v1.0.4</p>
-         <p className="text-[7px] font-bold text-white/10 uppercase tracking-[0.3em] italic">Encryption Standard: Level 04 Alpha</p>
       </div>
     </div>
   );
